@@ -209,7 +209,6 @@ import { useEffect } from 'react';
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
             let currentAudio = null, isMuted = false, isStopped = false;
 
             localforage.config({
@@ -403,6 +402,7 @@ import { useEffect } from 'react';
                 document.getElementById("detailsSection").style.display = "none";
                 document.getElementById("playCard").style.display = "none";
             }
+        document.addEventListener("DOMContentLoaded", function () {
 
             displayFiles(); // Load files on page load
         });
