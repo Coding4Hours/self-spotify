@@ -10,6 +10,9 @@
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "^4.15.9"
+    "astro": "^4.15.9",
+    "jsmediatags": "^3.9.7",
+    "localforage": "^1.10.0",
+    "react": "^18.3.1"
   }
 }
