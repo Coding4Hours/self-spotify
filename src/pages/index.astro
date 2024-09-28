@@ -208,6 +208,7 @@ import { useEffect } from 'react';
         <button class="button" onclick="showUploadSection()">Back</button>
     </div>
 <script>
+document.addEventListener("DOMContentLoaded", function() {
         let currentAudio = null, isMuted = false, isStopped = false;
 
         localforage.config({
@@ -406,6 +407,7 @@ import { useEffect } from 'react';
         useEffect(() => {
             displayFiles();
         }, []);
+});
     </script>
 </body>
 </html>
