@@ -3,15 +3,14 @@ import { useEffect } from 'react';
 ---
 
 <html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <meta name="generator" content={Astro.generator} />
-    <title>Songs</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js" defer></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
- <style>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Songs</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+        <style>
             body {
                 font-family: Arial, sans-serif;
                 margin: 20px;
@@ -166,54 +165,58 @@ import { useEffect } from 'react';
                 }
             }
         </style>
-</head>
-<body>
-    <h1>Song Upload</h1>
+    </head>
+    <body>
+        <h1 id="title1">Song upload</h1>
 
-    <div id="uploadSection">
-        <input type="file" id="fileInput" accept="audio/*" multiple />
-        <button onclick="storeFiles()">Upload to LocalForage</button>
-    </div>
-
-    <div id="title2" style="display: flex; justify-content: space-between; align-items: center;">
-        <h2 style="flex: 1; text-align: center;">Songs</h2>
-        <button class="button" onclick="clearSongs()">
-            <i class="fa-solid fa-eraser"></i>
-        </button>
-    </div>
-
-    <div id="mp3List"></div>
-
-    <div class="playCard" id="playCard">
-        <img id="coverImage" alt="Cover" />
-        <h3 id="currentSongTitle"></h3>
-        <button id="stopButton" class="button" onclick="stopAudio()">Stop</button>
-        <button id="muteButton" class="button" onclick="toggleMute()">Mute</button>
-        <div class="volumeControl">
-            <label for="volumeSlider">Volume:</label>
-            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1" onchange="changeVolume(this.value)" />
+        <div id="uploadSection">
+            <input type="file" id="fileInput" accept="audio/*" multiple />
+            <button onclick="storeFiles()">Upload to LocalForage</button>
         </div>
-        <div class="progressContainer">
-            <label for="progressBar">Song Progress:</label>
-            <div class="progressBar" id="progressBar" onclick="setProgress(event)">
-                <div class="progress" id="progress"></div>
-                <div class="progressCircle" id="progressCircle"></div>
+
+        <div id="title2" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="flex: 1; text-align: center;">Songs</h2>
+            <button class="button" onclick="localforage.clear().then(() => { alert('Cleared!'); location.reload();});">
+                <i class="fa-solid fa-eraser"></i>
+            </button>
+        </div>
+
+        <div id="mp3List"></div>
+
+        <div class="playCard" id="playCard">
+            <img id="coverImage" alt="Cover" />
+            <h3 id="currentSongTitle"></h3>
+            <button id="stopButton" class="button" onclick="stopAudio()">Stop</button>
+            <button class="button" id="muteButton" onclick="toggleMute()">Mute</button>
+            <div class="volumeControl">
+                <label for="volumeSlider">Volume:</label>
+                <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1" onchange="changeVolume(this.value)" />
+            </div>
+            <div class="progressContainer">
+                <label for="progressBar">Song Progress:</label>
+                <div class="progressBar" id="progressBar" onclick="setProgress(event)">
+                    <div class="progress" id="progress"></div>
+                    <div class="progressCircle" id="progressCircle"></div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div id="detailsSection" style="display: none;">
-        <h2>Song Details</h2>
-        <div class="songDetails" id="songDetails"></div>
-        <button class="button" onclick="showUploadSection()">Back</button>
-    </div>
+        <div id="detailsSection" style="display: none;">
+            <h2>Song Details</h2>
+            <div class="songDetails" id="songDetails"></div>
+            <center>
+                <button class="button" onclick="showUploadSection()">Back</button>
+            </center>
+        </div>
 
-    <script>
-            let currentAudio = null, isMuted = false, isStopped = false;
+        <script>
+            let currentAudio = null;
+            let isMuted = false;
+            let isStopped = false;
 
             localforage.config({
                 driver: localforage.INDEXEDDB,
-                name: "mp3Database"
+                name: "mp3Database",
             });
 
             function storeFiles() {
@@ -222,8 +225,10 @@ import { useEffect } from 'react';
 
                 Array.from(files).forEach((file) => {
                     const reader = new FileReader();
+
                     reader.onload = function (event) {
                         const arrayBuffer = event.target.result;
+
                         jsmediatags.read(file, {
                             onSuccess: function (tag) {
                                 const mp3File = {
@@ -237,7 +242,11 @@ import { useEffect } from 'react';
                                     cover: tag.tags.picture ? `data:${tag.tags.picture.format};base64,${btoa(String.fromCharCode(...new Uint8Array(tag.tags.picture.data)))}` : "",
                                     fileData: arrayBuffer,
                                 };
-                                localforage.setItem(file.name, mp3File).then(displayFiles).catch(console.error);
+
+                                localforage
+                                    .setItem(file.name, mp3File)
+                                    .then(() => displayFiles())
+                                    .catch((err) => console.error("Error saving file", err));
                             },
                             onError: function () {
                                 const mp3File = {
@@ -251,69 +260,17 @@ import { useEffect } from 'react';
                                     cover: "",
                                     fileData: arrayBuffer,
                                 };
-                                localforage.setItem(file.name, mp3File).then(displayFiles).catch(console.error);
-                            }
+
+                                localforage
+                                    .setItem(file.name, mp3File)
+                                    .then(() => displayFiles())
+                                    .catch((err) => console.error("Error saving file", err));
+                            },
                         });
                     };
+
                     reader.readAsArrayBuffer(file);
                 });
-            }
-
-            function clearSongs() {
-                localforage.clear().then(() => {
-                    alert('Cleared!');
-                    location.reload();
-                });
-            }
-
-            function displayFiles() {
-                const mp3List = document.getElementById("mp3List");
-                mp3List.innerHTML = ""; // Clear the list initially
-
-                localforage.keys().then((keys) => {
-                    if (keys.length === 0) {
-                        mp3List.innerHTML = "No songs found!";
-                        return;
-                    }
-
-                    keys.forEach((key) => {
-                        localforage.getItem(key).then((value) => {
-                            const card = document.createElement("div");
-                            card.className = "mp3Card";
-                            card.id = key;
-
-                            card.onclick = () => showSongDetails(value);
-
-                            const title = document.createElement("h3");
-                            title.textContent = value.songName || "Untitled";
-                            card.appendChild(title);
-
-                            const description = document.createElement("p");
-                            description.textContent = value.description || "No description available.";
-                            card.appendChild(description);
-
-                            const playButton = document.createElement("button");
-                            playButton.textContent = "Play";
-                            playButton.className = "button";
-                            playButton.onclick = (e) => {
-                                e.stopPropagation(); // Prevent triggering card click
-                                playSong(value);
-                            };
-                            card.appendChild(playButton);
-
-                            const deleteButton = document.createElement("button");
-                            deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
-                            deleteButton.className = "deleteButton";
-                            deleteButton.onclick = (e) => {
-                                e.stopPropagation(); // Prevent triggering card click
-                                deleteFile(key);
-                            };
-                            card.appendChild(deleteButton);
-
-                            mp3List.appendChild(card);
-                        }).catch(console.error);
-                    });
-                }).catch(console.error);
             }
 
             function deleteFile(fileName) {
@@ -321,11 +278,71 @@ import { useEffect } from 'react';
                 card.style.animation = "fadeOut 0.5s forwards";
 
                 setTimeout(() => {
-                    localforage.removeItem(fileName).then(() => {
-                        card.remove();
-                        displayFiles();
-                    }).catch(console.error);
+                    localforage
+                        .removeItem(fileName)
+                        .then(() => {
+                            card.remove();
+                            displayFiles();
+                        })
+                        .catch((err) => console.error("Error deleting file", err));
                 }, 500);
+            }
+            function displayFiles() {
+                const mp3List = document.getElementById("mp3List");
+                mp3List.innerHTML = ""; // Clear the list initially
+
+                localforage
+                    .keys()
+                    .then((keys) => {
+                        if (keys.length === 0) {
+                            // If no keys (songs), show the "No songs found!" message
+                            mp3List.innerHTML = "No songs found!";
+                            return;
+                        }
+
+                        // Iterate through the keys and display each song
+                        keys.forEach((key) => {
+                            localforage
+                                .getItem(key)
+                                .then((value) => {
+                                    const card = document.createElement("div");
+                                    card.className = "mp3Card";
+                                    card.id = key;
+
+                                    card.onclick = () => showSongDetails(value);
+
+                                    const title = document.createElement("h3");
+                                    title.textContent = value.songName || "Untitled";
+                                    card.appendChild(title);
+
+                                    const description = document.createElement("p");
+                                    description.textContent = value.description || "No description available.";
+                                    card.appendChild(description);
+
+                                    const button = document.createElement("button");
+                                    button.textContent = "Play";
+                                    button.className = "button";
+                                    button.onclick = (e) => {
+                                        e.stopPropagation(); // Prevent triggering card click
+                                        playSong(value);
+                                    };
+                                    card.appendChild(button);
+
+                                    const deleteButton = document.createElement("button");
+                                    deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                                    deleteButton.className = "deleteButton";
+                                    deleteButton.onclick = (e) => {
+                                        e.stopPropagation(); // Prevent triggering card click
+                                        deleteFile(key);
+                                    };
+                                    card.appendChild(deleteButton);
+
+                                    mp3List.appendChild(card);
+                                })
+                                .catch((err) => console.error("Error retrieving file", err));
+                        });
+                    })
+                    .catch((err) => console.error("Error retrieving keys", err));
             }
 
             function playSong(song) {
@@ -333,16 +350,22 @@ import { useEffect } from 'react';
                 currentAudio = new Audio(URL.createObjectURL(new Blob([song.fileData])));
                 currentAudio.play();
 
-                currentAudio.onended = () => { currentAudio = null; };
+                currentAudio.onended = () => {
+                    currentAudio = null; // Clear current audio when it ends
+                };
 
                 document.getElementById("currentSongTitle").textContent = song.songName;
                 document.getElementById("coverImage").src = song.cover || "default_cover.jpg"; // Default cover if none found
                 document.getElementById("playCard").style.display = "block";
+                changeVolume(document.getElementById("volumeSlider").value); // Set initial volume
 
+                // Update progress bar as the song plays
                 currentAudio.ontimeupdate = () => {
                     const progressBar = document.getElementById("progress");
                     const progressPercentage = (currentAudio.currentTime / currentAudio.duration) * 100;
                     progressBar.style.width = `${progressPercentage}%`;
+
+                    // Move the circle along with the progress
                     const progressCircle = document.getElementById("progressCircle");
                     progressCircle.style.left = `${progressPercentage}%`;
                 };
@@ -360,7 +383,7 @@ import { useEffect } from 'react';
                 if (currentAudio) {
                     isStopped = !isStopped;
                     if (isStopped) currentAudio.pause();
-                    else currentAudio.play();
+                    else if (!isStopped) currentAudio.play();
                     document.getElementById("stopButton").textContent = isStopped ? "Start" : "Stop";
                 }
             }
@@ -382,30 +405,32 @@ import { useEffect } from 'react';
             function showSongDetails(song) {
                 const detailsDiv = document.getElementById("songDetails");
                 detailsDiv.innerHTML = `
-                    <h2>${song.songName}</h2>
-                    <p><strong>Artist:</strong> ${song.artist}</p>
-                    <p><strong>Album:</strong> ${song.album}</p>
-                    <p><strong>Year:</strong> ${song.year}</p>
-                    <p><strong>Track:</strong> ${song.track}</p>
-                    <p><strong>Genre:</strong> ${song.genre}</p>
-                    <p><strong>Description:</strong> ${song.description}</p>
-                `;
-                document.getElementById("detailsSection").style.display = "block";
+                <h2>${song.songName}</h2>
+                <p><strong>Artist:</strong> ${song.artist}</p>
+                <p><strong>Album:</strong> ${song.album}</p>
+                <p><strong>Year:</strong> ${song.year}</p>
+                <p><strong>Track:</strong> ${song.track}</p>
+                <p><strong>Genre:</strong> ${song.genre}</p>
+                <p><strong>Description:</strong> ${song.description}</p>
+            `;
+
+                // Hide other sections
                 document.getElementById("uploadSection").style.display = "none";
                 document.getElementById("mp3List").style.display = "none";
-                document.getElementById("playCard").style.display = "none";
+                document.getElementById("title1").style.display = "none";
+                document.getElementById("title2").style.display = "none";
+                document.getElementById("detailsSection").style.display = "block";
             }
 
             function showUploadSection() {
-                document.getElementById("uploadSection").style.display = "block";
-                document.getElementById("mp3List").style.display = "block";
+                document.getElementById("uploadSection").style.display = "";
+                document.getElementById("mp3List").style.display = "";
+                document.getElementById("title1").style.display = "";
+                document.getElementById("title2").style.display = "flex";
                 document.getElementById("detailsSection").style.display = "none";
-                document.getElementById("playCard").style.display = "none";
             }
-        document.addEventListener("DOMContentLoaded", function () {
 
-            displayFiles(); // Load files on page load
-        });
-    </script>
-</body>
+            displayFiles();
+        </script>
+    </body>
 </html>
