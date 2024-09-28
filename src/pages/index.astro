@@ -1,0 +1,277 @@
+---
+// Import necessary components or libraries if needed
+import { useEffect } from 'react';
+import localforage from 'localforage';
+import jsmediatags from 'jsmediatags';
+---
+
+<html lang="en">
+    <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Songs</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f0f0f0; color: #333; }
+        h1, h2 { color: #444; text-align: center; }
+        #uploadSection { text-align: center; margin-bottom: 20px; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); }
+        #mp3List { display: flex; flex-wrap: wrap; justify-content: center; margin: 20px 0; }
+        .mp3Card { background: #fff; border-radius: 8px; padding: 15px; margin: 10px; width: 250px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); transition: transform 0.3s; position: relative; animation: slideIn 0.5s ease forwards; }
+        .mp3Card:hover { transform: scale(1.05); }
+        .deleteButton { position: absolute; top: 10px; right: 10px; background: #ff4d4d; border: none; border-radius: 50%; color: white; cursor: pointer; padding: 5px 8px; transition: background 0.3s; }
+        .deleteButton:hover { background: #e60000; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .playCard { display: none; position: fixed; bottom: 20px; right: 20px; width: 200px; max-height: 100%; padding: 15px; border: 1px solid #007bff; border-radius: 5px; background: white; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); text-align: center; }
+        .playCard img { max-width: 100%; max-height: 150px; }
+        .button { cursor: pointer; background: #007bff; color: white; border: none; padding: 10px; border-radius: 5px; }
+        .volumeControl { margin-top: 10px; }
+        .progressContainer { margin-top: 10px; position: relative; }
+        .progressBar { width: 100%; height: 5px; background: #ddd; border-radius: 5px; cursor: pointer; }
+        .progress { height: 100%; background: #007bff; border-radius: 5px; width: 0%; position: relative; }
+        .progressCircle { width: 10px; height: 10px; background: #007bff; border-radius: 50%; position: absolute; top: 90%; transform: translateY(-50%); transition: left 0.1s; }
+    </style>
+</head>
+<body>
+    <h1>Song Upload</h1>
+
+    <div id="uploadSection">
+        <input type="file" id="fileInput" accept="audio/*" multiple />
+        <button onclick="storeFiles()">Upload to LocalForage</button>
+    </div>
+
+    <div id="title2" style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="flex: 1; text-align: center;">Songs</h2>
+        <button class="button" onclick="clearSongs()">
+            <i class="fa-solid fa-eraser"></i>
+        </button>
+    </div>
+
+    <div id="mp3List"></div>
+
+    <div class="playCard" id="playCard">
+        <img id="coverImage" alt="Cover" />
+        <h3 id="currentSongTitle"></h3>
+        <button id="stopButton" class="button" onclick="stopAudio()">Stop</button>
+        <button class="button" id="muteButton" onclick="toggleMute()">Mute</button>
+        <div class="volumeControl">
+            <label for="volumeSlider">Volume:</label>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1" onchange="changeVolume(this.value)" />
+        </div>
+        <div class="progressContainer">
+            <label for="progressBar">Song Progress:</label>
+            <div class="progressBar" id="progressBar" onclick="setProgress(event)">
+                <div class="progress" id="progress"></div>
+                <div class="progressCircle" id="progressCircle"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="detailsSection" style="display: none;">
+        <h2>Song Details</h2>
+        <div class="songDetails" id="songDetails"></div>
+        <button class="button" onclick="showUploadSection()">Back</button>
+    </div>
+
+    <script>
+        let currentAudio = null, isMuted = false, isStopped = false;
+
+        localforage.config({
+            driver: localforage.INDEXEDDB,
+            name: "mp3Database"
+        });
+
+        function storeFiles() {
+            const files = document.getElementById("fileInput").files;
+            if (files.length === 0) return;
+
+            Array.from(files).forEach((file) => {
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    const arrayBuffer = event.target.result;
+
+                    jsmediatags.read(file, {
+                        onSuccess: function (tag) {
+                            const mp3File = {
+                                songName: tag.tags.title || file.name,
+                                artist: tag.tags.artist || "Unknown Artist",
+                                album: tag.tags.album || "Unknown Album",
+                                year: tag.tags.year || "Unknown Year",
+                                track: tag.tags.track || "Unknown Track",
+                                genre: tag.tags.genre || "Unknown Genre",
+                                description: tag.tags.comment || "No description available",
+                                cover: tag.tags.picture ? `data:${tag.tags.picture.format};base64,${btoa(String.fromCharCode(...new Uint8Array(tag.tags.picture.data)))}` : "",
+                                fileData: arrayBuffer,
+                            };
+                            localforage.setItem(file.name, mp3File).then(displayFiles).catch(console.error);
+                        },
+                        onError: function () {
+                            const mp3File = {
+                                songName: file.name,
+                                artist: "Unknown Artist",
+                                album: "Unknown Album",
+                                year: "Unknown Year",
+                                track: "Unknown Track",
+                                genre: "Unknown Genre",
+                                description: "No description available",
+                                cover: "",
+                                fileData: arrayBuffer,
+                            };
+                            localforage.setItem(file.name, mp3File).then(displayFiles).catch(console.error);
+                        }
+                    });
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function clearSongs() {
+            localforage.clear().then(() => {
+                alert('Cleared!');
+                location.reload();
+            });
+        }
+
+        function displayFiles() {
+            const mp3List = document.getElementById("mp3List");
+            mp3List.innerHTML = ""; // Clear the list initially
+
+            localforage.keys().then((keys) => {
+                if (keys.length === 0) {
+                    mp3List.innerHTML = "No songs found!";
+                    return;
+                }
+
+                keys.forEach((key) => {
+                    localforage.getItem(key).then((value) => {
+                        const card = document.createElement("div");
+                        card.className = "mp3Card";
+                        card.id = key;
+
+                        card.onclick = () => showSongDetails(value);
+
+                        const title = document.createElement("h3");
+                        title.textContent = value.songName || "Untitled";
+                        card.appendChild(title);
+
+                        const description = document.createElement("p");
+                        description.textContent = value.description || "No description available.";
+                        card.appendChild(description);
+
+                        const playButton = document.createElement("button");
+                        playButton.textContent = "Play";
+                        playButton.className = "button";
+                        playButton.onclick = (e) => {
+                            e.stopPropagation(); // Prevent triggering card click
+                            playSong(value);
+                        };
+                        card.appendChild(playButton);
+
+                        const deleteButton = document.createElement("button");
+                        deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                        deleteButton.className = "deleteButton";
+                        deleteButton.onclick = (e) => {
+                            e.stopPropagation(); // Prevent triggering card click
+                            deleteFile(key);
+                        };
+                        card.appendChild(deleteButton);
+
+                        mp3List.appendChild(card);
+                    }).catch(console.error);
+                });
+            }).catch(console.error);
+        }
+
+        function deleteFile(fileName) {
+            const card = document.getElementById(fileName);
+            card.style.animation = "fadeOut 0.5s forwards";
+
+            setTimeout(() => {
+                localforage.removeItem(fileName).then(() => {
+                    card.remove();
+                    displayFiles();
+                }).catch(console.error);
+            }, 500);
+        }
+
+        function playSong(song) {
+            if (currentAudio) currentAudio.pause();
+            currentAudio = new Audio(URL.createObjectURL(new Blob([song.fileData])));
+            currentAudio.play();
+
+            currentAudio.onended = () => { currentAudio = null; };
+
+            document.getElementById("currentSongTitle").textContent = song.songName;
+            document.getElementById("coverImage").src = song.cover || "default_cover.jpg"; // Default cover if none found
+            document.getElementById("playCard").style.display = "block";
+            changeVolume(document.getElementById("volumeSlider").value); // Set initial volume
+
+            currentAudio.ontimeupdate = () => {
+                const progressBar = document.getElementById("progress");
+                const progressPercentage = (currentAudio.currentTime / currentAudio.duration) * 100;
+                progressBar.style.width = `${progressPercentage}%`;
+                const progressCircle = document.getElementById("progressCircle");
+                progressCircle.style.left = `${progressPercentage}%`;
+            };
+        }
+
+        function setProgress(event) {
+            const progressBar = document.getElementById("progressBar");
+            const clickPosition = event.offsetX / progressBar.clientWidth;
+            if (currentAudio) {
+                currentAudio.currentTime = clickPosition * currentAudio.duration;
+            }
+        }
+
+        function stopAudio() {
+            if (currentAudio) {
+                isStopped = !isStopped;
+                if (isStopped) currentAudio.pause();
+                else currentAudio.play();
+                document.getElementById("stopButton").textContent = isStopped ? "Start" : "Stop";
+            }
+        }
+
+        function changeVolume(value) {
+            if (currentAudio) {
+                currentAudio.volume = value;
+            }
+        }
+
+        function toggleMute() {
+            if (currentAudio) {
+                isMuted = !isMuted;
+                currentAudio.muted = isMuted;
+                document.getElementById("muteButton").textContent = isMuted ? "Unmute" : "Mute";
+            }
+        }
+
+        function showSongDetails(song) {
+            const detailsDiv = document.getElementById("songDetails");
+            detailsDiv.innerHTML = `
+                <h2>${song.songName}</h2>
+                <p><strong>Artist:</strong> ${song.artist}</p>
+                <p><strong>Album:</strong> ${song.album}</p>
+                <p><strong>Year:</strong> ${song.year}</p>
+                <p><strong>Track:</strong> ${song.track}</p>
+                <p><strong>Genre:</strong> ${song.genre}</p>
+                <p><strong>Description:</strong> ${song.description}</p>
+            `;
+
+            document.getElementById("uploadSection").style.display = "none";
+            document.getElementById("mp3List").style.display = "none";
+            document.getElementById("detailsSection").style.display = "block";
+        }
+
+        function showUploadSection() {
+            document.getElementById("uploadSection").style.display = "";
+            document.getElementById("mp3List").style.display = "";
+            document.getElementById("detailsSection").style.display = "none";
+        }
+
+        useEffect(() => {
+            displayFiles();
+        }, []);
+    </script>
+</body>
+</html>
